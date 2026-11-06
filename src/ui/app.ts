@@ -1,9 +1,11 @@
 import { db } from '../db/db';
+import { exportBackup, importBackup } from '../db/backup';
 import { createEntryRepo } from '../db/entryRepo';
 import { createSessionRepo } from '../db/sessionRepo';
 import { loadCalculator, mountCalculator } from './calculatorView';
 import { el } from './dom';
-import { renderHome } from './homeView';
+import { pickTextFile, saveTextFile } from './files';
+import { renderHome, type BackupDeps } from './homeView';
 import { parseRoute } from './router';
 
 const APP_NAME = 'เครื่องคิดเลขโต๊ด';
@@ -42,6 +44,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   const sessions = createSessionRepo(db);
   const entries = createEntryRepo(db);
+  const backup: BackupDeps = {
+    exportBackup: () => exportBackup(db),
+    importBackup: (data, mode) => importBackup(db, data, mode),
+    saveFile: saveTextFile,
+    pickFile: pickTextFile,
+    now: () => new Date(),
+  };
   const main = el('main', 'screen');
   root.replaceChildren(buildHeader(), main);
 
@@ -55,7 +64,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     try {
       const route = parseRoute(window.location.hash);
       if (route.name === 'home') {
-        await renderHome(main, { sessions, navigate });
+        await renderHome(main, { sessions, navigate, backup });
       } else {
         const data = await loadCalculator(sessions, entries, route.id);
         if (mine !== token) return; // a newer navigation started while we were reading

@@ -197,7 +197,7 @@ export function editEntryDialog(options: EditEntryOptions): Promise<EditEntryRes
       el(
         'div',
         'modal-actions',
-        button('ลบ', 'btn btn-danger', () => finish({ action: 'delete' })),
+        button('ลบ', 'btn btn-danger push-left', () => finish({ action: 'delete' })),
         button('ยกเลิก', 'btn', () => finish(null)),
         button('บันทึก', 'btn btn-primary', submit),
       ),
@@ -206,5 +206,47 @@ export function editEntryDialog(options: EditEntryOptions): Promise<EditEntryRes
     unmount = mountModal(card, () => finish(null));
     input.focus();
     input.select();
+  });
+}
+
+export interface Choice<T> {
+  label: string;
+  value: T;
+  className?: string;
+}
+
+export interface ChoiceOptions<T> {
+  title: string;
+  message: string;
+  choices: Choice<T>[];
+  cancelLabel?: string;
+}
+
+// Resolves with the chosen value, or null when cancelled.
+export function choiceDialog<T>(options: ChoiceOptions<T>): Promise<T | null> {
+  return new Promise((resolve) => {
+    let done = false;
+    let unmount = (): void => {};
+    const finish = (value: T | null): void => {
+      if (done) return;
+      done = true;
+      unmount();
+      resolve(value);
+    };
+
+    const cancel = button(options.cancelLabel ?? 'ยกเลิก', 'btn', () => finish(null));
+    const choiceButtons = options.choices.map((choice) =>
+      button(choice.label, choice.className ?? 'btn', () => finish(choice.value)),
+    );
+    const card = el(
+      'div',
+      'modal',
+      el('h2', 'modal-title', options.title),
+      el('p', '', options.message),
+      el('div', 'modal-actions', cancel, ...choiceButtons),
+    );
+
+    unmount = mountModal(card, () => finish(null));
+    cancel.focus();
   });
 }

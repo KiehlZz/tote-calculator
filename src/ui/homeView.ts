@@ -1,21 +1,48 @@
+import {
+  BackupError,
+  backupFileName,
+  parseBackup,
+  serializeBackup,
+  type BackupFile,
+  type ImportMode,
+  type ImportResult,
+} from '../db/backup';
 import type { SessionRepo } from '../db/sessionRepo';
 import type { Session } from '../db/types';
 import { formatThaiDate, formatThaiDateTime } from '../utils/thaiDate';
-import { confirmDialog, promptDialog } from './dialog';
+import { choiceDialog, confirmDialog, promptDialog } from './dialog';
 import { button, el } from './dom';
 import { validateSessionName } from './helpers';
+
+export interface BackupDeps {
+  exportBackup: () => Promise<BackupFile>;
+  importBackup: (backup: BackupFile, mode: ImportMode) => Promise<ImportResult>;
+  // true when the file was handed to the system, false when the user cancelled
+  saveFile: (filename: string, text: string) => Promise<boolean>;
+  // the file text, or null when the user cancelled
+  pickFile: () => Promise<string | null>;
+  now: () => Date;
+}
 
 export interface HomeDeps {
   sessions: SessionRepo;
   navigate: (hash: string) => void;
+  backup: BackupDeps;
+}
+
+function countEntries(data: BackupFile): number {
+  return data.sessions.reduce((sum, s) => sum + s.entries.length, 0);
 }
 
 export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<void> {
-  const { sessions, navigate } = deps;
+  const { sessions, navigate, backup } = deps;
 
   const banner = el('div', 'banner');
   banner.setAttribute('role', 'alert');
   banner.hidden = true;
+  const status = el('div', 'status');
+  status.setAttribute('role', 'status');
+  status.hidden = true;
   const list = el('div', 'session-list');
 
   function showError(message: string): void {
@@ -23,18 +50,41 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
     banner.hidden = false;
   }
 
-  function clearError(): void {
+  function showStatus(message: string): void {
+    status.textContent = message;
+    status.hidden = false;
+  }
+
+  function clearMessages(): void {
     banner.textContent = '';
     banner.hidden = true;
+    status.textContent = '';
+    status.hidden = true;
+  }
+
+  function fail(message: string, error: unknown): void {
+    console.error(error);
+    showError(message);
   }
 
   async function attempt(action: () => Promise<void>, failMessage: string): Promise<void> {
-    clearError();
+    clearMessages();
     try {
       await action();
     } catch (error) {
-      console.error(error);
-      showError(failMessage);
+      fail(failMessage, error);
+    }
+  }
+
+  // backup and restore never run at the same time, and a second tap is ignored
+  let busy = false;
+  async function exclusive(task: () => Promise<void>): Promise<void> {
+    if (busy) return;
+    busy = true;
+    try {
+      await task();
+    } finally {
+      busy = false;
     }
   }
 
@@ -124,9 +174,112 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
     }, 'ลบไม่สำเร็จ กรุณาลองอีกครั้ง');
   }
 
+  async function onBackup(): Promise<void> {
+    clearMessages();
+    try {
+      const data = await backup.exportBackup();
+      if (data.sessions.length === 0) {
+        showError('ยังไม่มีข้อมูลให้สำรอง');
+        return;
+      }
+      const filename = backupFileName(backup.now());
+      const saved = await backup.saveFile(filename, serializeBackup(data));
+      if (saved) {
+        showStatus(
+          `สร้างไฟล์สำรอง ${filename} แล้ว (${data.sessions.length} ชุด ${countEntries(data)} รายการ) กรุณาตรวจสอบว่าไฟล์ถูกบันทึกในเครื่อง`,
+        );
+      }
+    } catch (error) {
+      fail('สำรองข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง', error);
+    }
+  }
+
+  async function onRestore(): Promise<void> {
+    clearMessages();
+
+    let text: string | null;
+    try {
+      text = await backup.pickFile();
+    } catch (error) {
+      fail('อ่านไฟล์ไม่สำเร็จ กรุณาลองอีกครั้ง', error);
+      return;
+    }
+    if (text === null) return;
+
+    let data: BackupFile;
+    try {
+      data = parseBackup(text);
+    } catch (error) {
+      if (error instanceof BackupError) {
+        showError(`ไฟล์สำรองไม่ถูกต้อง จึงไม่มีการเปลี่ยนแปลงข้อมูล (${error.message})`);
+      } else {
+        fail('อ่านไฟล์สำรองไม่สำเร็จ', error);
+      }
+      return;
+    }
+    if (data.sessions.length === 0) {
+      showError('ไฟล์สำรองนี้ไม่มีข้อมูล จึงไม่มีการเปลี่ยนแปลง');
+      return;
+    }
+
+    const mode = await choiceDialog<ImportMode>({
+      title: 'กู้คืนข้อมูลจากไฟล์สำรอง',
+      message: `พบ ${data.sessions.length} ชุด ${countEntries(data)} รายการ (สำรองเมื่อ ${formatThaiDateTime(data.exportedAt)}) ต้องการนำเข้าอย่างไร`,
+      choices: [
+        { label: 'เพิ่มเข้าไป', value: 'merge', className: 'btn btn-primary' },
+        { label: 'แทนที่ทั้งหมด', value: 'replace', className: 'btn btn-danger' },
+      ],
+    });
+    if (mode === null) return;
+
+    if (mode === 'replace') {
+      let current: number;
+      try {
+        current = (await sessions.list()).length;
+      } catch (error) {
+        fail('กู้คืนข้อมูลไม่สำเร็จ ข้อมูลเดิมไม่ถูกเปลี่ยนแปลง', error);
+        return;
+      }
+      const confirmed = await confirmDialog({
+        title: 'แทนที่ข้อมูลทั้งหมดใช่หรือไม่',
+        message: `ข้อมูลปัจจุบัน ${current} ชุด จะถูกลบทั้งหมดแล้วแทนที่ด้วยข้อมูลจากไฟล์สำรอง กู้คืนไม่ได้`,
+        confirmLabel: 'แทนที่ทั้งหมด',
+        danger: true,
+      });
+      if (!confirmed) return;
+    }
+
+    let result: ImportResult;
+    try {
+      result = await backup.importBackup(data, mode);
+    } catch (error) {
+      fail('กู้คืนข้อมูลไม่สำเร็จ ข้อมูลเดิมไม่ถูกเปลี่ยนแปลง', error);
+      return;
+    }
+    try {
+      await refresh();
+    } catch (error) {
+      fail('กู้คืนแล้ว แต่แสดงรายการไม่สำเร็จ กรุณารีเฟรชหน้า', error);
+      return;
+    }
+    showStatus(`กู้คืนสำเร็จ: ${result.sessions} ชุด ${result.entries} รายการ`);
+  }
+
   main.replaceChildren(
-    el('div', 'toolbar', el('h2', '', 'ชุดข้อมูล'), button('สร้างชุดข้อมูลใหม่', 'btn btn-primary', () => void onCreate())),
+    el(
+      'div',
+      'toolbar',
+      el('h2', '', 'ชุดข้อมูล'),
+      el(
+        'div',
+        'toolbar-actions',
+        button('สำรองข้อมูล', 'btn', () => void exclusive(onBackup)),
+        button('กู้คืนข้อมูล', 'btn', () => void exclusive(onRestore)),
+        button('สร้างชุดข้อมูลใหม่', 'btn btn-primary', () => void onCreate()),
+      ),
+    ),
     banner,
+    status,
     list,
   );
   await refresh();

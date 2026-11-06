@@ -6,6 +6,7 @@ import { ToteDatabase } from '../src/db/db';
 import { createEntryRepo } from '../src/db/entryRepo';
 import { createSessionRepo } from '../src/db/sessionRepo';
 import { renderHome } from '../src/ui/homeView';
+import { exportBackup, importBackup, parseBackup, type BackupFile, type ImportMode } from '../src/db/backup';
 
 let counter = 0;
 let tick = 0;
@@ -18,6 +19,21 @@ let navigate: ReturnType<typeof vi.fn>;
 
 const clock = () => new Date(Date.UTC(2026, 0, 1, 0, 0, tick++)).toISOString();
 
+let saved: { filename: string; text: string }[] = [];
+let saveResult = true;
+let pickFile: () => Promise<string | null> = async () => null;
+
+const backupDeps = {
+  exportBackup: () => exportBackup(db, () => '2026-11-05T10:00:00.000Z'),
+  importBackup: (data: BackupFile, mode: ImportMode) => importBackup(db, data, mode),
+  saveFile: async (filename: string, text: string) => {
+    saved.push({ filename, text });
+    return saveResult;
+  },
+  pickFile: () => pickFile(),
+  now: () => new Date(2026, 10, 5, 12, 0),
+};
+
 beforeEach(() => {
   dbName = `tote-home-test-${counter++}`;
   tick = 0;
@@ -25,6 +41,9 @@ beforeEach(() => {
   sessions = createSessionRepo(db, clock);
   entries = createEntryRepo(db, clock);
   navigate = vi.fn();
+  saved = [];
+  saveResult = true;
+  pickFile = async () => null;
   document.body.replaceChildren();
   main = document.createElement('main');
   document.body.append(main);
@@ -37,7 +56,7 @@ afterEach(async () => {
   await Dexie.delete(dbName);
 });
 
-const mount = () => renderHome(main, { sessions, navigate });
+const mount = () => renderHome(main, { sessions, navigate, backup: backupDeps });
 const names = () => [...main.querySelectorAll('.session-name')].map((n) => n.textContent);
 const modal = () => document.body.querySelector('.modal');
 const modalInput = () => document.body.querySelector('.modal input') as HTMLInputElement;
@@ -175,5 +194,216 @@ describe('Home screen', () => {
     expect(banner.hidden).toBe(false);
     expect(navigate).not.toHaveBeenCalled();
     expect(await sessions.list()).toEqual([]);
+  });
+});
+
+const statusEl = () => main.querySelector('.status') as HTMLElement;
+const bannerEl = () => main.querySelector('.banner') as HTMLElement;
+
+const fileSession = {
+  name: 'จากไฟล์',
+  createdAt: '2026-11-01T01:00:00.000Z',
+  updatedAt: '2026-11-02T01:00:00.000Z',
+  entries: [
+    { columnMultiplier: 30, number: '007', createdAt: '2026-11-01T01:00:00.000Z', updatedAt: '2026-11-01T01:00:00.000Z' },
+    { columnMultiplier: 60, number: '123', createdAt: '2026-11-01T01:01:00.000Z', updatedAt: '2026-11-01T01:01:00.000Z' },
+  ],
+};
+const backupText = (sessionList: unknown[] = [fileSession]) =>
+  JSON.stringify({
+    app: 'tote-calculator',
+    schemaVersion: 1,
+    exportedAt: '2026-11-05T10:00:00.000Z',
+    sessions: sessionList,
+  });
+
+const startRestore = async () => {
+  buttonByText(main, 'กู้คืนข้อมูล').click();
+  await vi.waitFor(() => expect(modal()).not.toBeNull());
+};
+
+describe('Backup', () => {
+  it('saves all sessions to a JSON file named after today', async () => {
+    const s = await sessions.create('A');
+    await entries.add(s.id, '007', 30);
+    await entries.add(s.id, '007', 30);
+    await mount();
+    buttonByText(main, 'สำรองข้อมูล').click();
+    await vi.waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0].filename).toBe('tote-backup-2026-11-05.json');
+    const parsed = parseBackup(saved[0].text);
+    expect(parsed.sessions.map((x) => x.name)).toEqual(['A']);
+    expect(parsed.sessions[0].entries.map((e) => e.number)).toEqual(['007', '007']);
+    await vi.waitFor(() => expect(statusEl().hidden).toBe(false));
+    expect(statusEl().textContent).toContain('tote-backup-2026-11-05.json');
+    expect(statusEl().textContent).toContain('1 ชุด 2 รายการ');
+  });
+
+  it('does not create a file when there is no data', async () => {
+    await mount();
+    buttonByText(main, 'สำรองข้อมูล').click();
+    await vi.waitFor(() => expect(bannerEl().hidden).toBe(false));
+    expect(bannerEl().textContent).toContain('ยังไม่มีข้อมูลให้สำรอง');
+    expect(saved).toEqual([]);
+  });
+
+  it('shows no success message when the user closes the share sheet', async () => {
+    await sessions.create('A');
+    saveResult = false;
+    await mount();
+    buttonByText(main, 'สำรองข้อมูล').click();
+    await vi.waitFor(() => expect(saved).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(statusEl().hidden).toBe(true);
+    expect(bannerEl().hidden).toBe(true);
+  });
+
+  it('shows an error when the export fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await sessions.create('A');
+    await mount();
+    vi.spyOn(db.sessions, 'orderBy').mockImplementation(() => {
+      throw new Error('boom');
+    });
+    buttonByText(main, 'สำรองข้อมูล').click();
+    await vi.waitFor(() => expect(bannerEl().textContent).toContain('สำรองข้อมูลไม่สำเร็จ'));
+    expect(saved).toEqual([]);
+  });
+});
+
+describe('Restore', () => {
+  it('adds the file sessions next to the existing ones', async () => {
+    const existing = await sessions.create('Existing');
+    await entries.add(existing.id, '111', 30);
+    pickFile = async () => backupText();
+    await mount();
+    await startRestore();
+    expect(modal()!.textContent).toContain('พบ 1 ชุด 2 รายการ');
+    expect(modal()!.textContent).toContain('5 พ.ย. 2569');
+    buttonByText(document.body, 'เพิ่มเข้าไป').click();
+    await vi.waitFor(() => expect(names()).toEqual(['จากไฟล์', 'Existing']));
+    expect(statusEl().textContent).toContain('กู้คืนสำเร็จ: 1 ชุด 2 รายการ');
+    expect(await db.entries.count()).toBe(3);
+    expect(modal()).toBeNull();
+  });
+
+  it('replaces everything only after a second confirmation', async () => {
+    await sessions.create('Old1');
+    await sessions.create('Old2');
+    pickFile = async () => backupText();
+    await mount();
+    await startRestore();
+    buttonByText(document.body, 'แทนที่ทั้งหมด').click();
+    await vi.waitFor(() => expect(modal()?.textContent).toContain('ข้อมูลปัจจุบัน 2 ชุด'));
+    expect(await sessions.list()).toHaveLength(2); // nothing is deleted before confirming
+    expect(document.activeElement?.textContent).toBe('ยกเลิก');
+    buttonByText(document.body, 'แทนที่ทั้งหมด').click();
+    await vi.waitFor(() => expect(names()).toEqual(['จากไฟล์']));
+    expect(await db.entries.count()).toBe(2);
+    expect(statusEl().textContent).toContain('กู้คืนสำเร็จ');
+  });
+
+  it('keeps everything when the replace confirmation is cancelled', async () => {
+    await sessions.create('Old1');
+    pickFile = async () => backupText();
+    await mount();
+    await startRestore();
+    buttonByText(document.body, 'แทนที่ทั้งหมด').click();
+    await vi.waitFor(() => expect(modal()?.textContent).toContain('ข้อมูลปัจจุบัน 1 ชุด'));
+    buttonByText(document.body, 'ยกเลิก').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(modal()).toBeNull();
+    expect(names()).toEqual(['Old1']);
+    expect(await sessions.list()).toHaveLength(1);
+    expect(statusEl().hidden).toBe(true);
+  });
+
+  it('imports nothing when the choice dialog is cancelled', async () => {
+    await sessions.create('Old1');
+    pickFile = async () => backupText();
+    await mount();
+    await startRestore();
+    buttonByText(document.body, 'ยกเลิก').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(modal()).toBeNull();
+    expect(names()).toEqual(['Old1']);
+    expect(await sessions.list()).toHaveLength(1);
+  });
+
+  it('does nothing when the file picker is cancelled', async () => {
+    await mount();
+    buttonByText(main, 'กู้คืนข้อมูล').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(modal()).toBeNull();
+    expect(bannerEl().hidden).toBe(true);
+  });
+
+  it('rejects a file with an invalid number and changes nothing', async () => {
+    await sessions.create('Old1');
+    pickFile = async () =>
+      backupText([{ ...fileSession, entries: [{ ...fileSession.entries[0], number: '12' }] }]);
+    await mount();
+    buttonByText(main, 'กู้คืนข้อมูล').click();
+    await vi.waitFor(() => expect(bannerEl().hidden).toBe(false));
+    expect(bannerEl().textContent).toContain('ไฟล์สำรองไม่ถูกต้อง');
+    expect(bannerEl().textContent).toContain('sessions[0].entries[0].number');
+    expect(modal()).toBeNull();
+    expect(await sessions.list()).toHaveLength(1);
+  });
+
+  it('rejects a file that is not JSON', async () => {
+    pickFile = async () => 'hello';
+    await mount();
+    buttonByText(main, 'กู้คืนข้อมูล').click();
+    await vi.waitFor(() => expect(bannerEl().textContent).toContain('ไฟล์สำรองไม่ถูกต้อง'));
+    expect(modal()).toBeNull();
+  });
+
+  it('rejects a backup that contains no data, so replace can never wipe everything', async () => {
+    await sessions.create('Old1');
+    pickFile = async () => backupText([]);
+    await mount();
+    buttonByText(main, 'กู้คืนข้อมูล').click();
+    await vi.waitFor(() => expect(bannerEl().textContent).toContain('ไฟล์สำรองนี้ไม่มีข้อมูล'));
+    expect(modal()).toBeNull();
+    expect(await sessions.list()).toHaveLength(1);
+  });
+
+  it('shows an error and keeps the old data when the import fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await sessions.create('Existing');
+    pickFile = async () => backupText();
+    await mount();
+    vi.spyOn(db.entries, 'bulkAdd').mockRejectedValue(new Error('boom'));
+    await startRestore();
+    buttonByText(document.body, 'เพิ่มเข้าไป').click();
+    await vi.waitFor(() => expect(bannerEl().textContent).toContain('กู้คืนข้อมูลไม่สำเร็จ'));
+    vi.restoreAllMocks();
+    expect(names()).toEqual(['Existing']);
+    expect(await db.sessions.count()).toBe(1); // the imported session was rolled back
+  });
+
+  it('shows an error when the file cannot be read', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    pickFile = async () => {
+      throw new Error('read failed');
+    };
+    await mount();
+    buttonByText(main, 'กู้คืนข้อมูล').click();
+    await vi.waitFor(() => expect(bannerEl().textContent).toContain('อ่านไฟล์ไม่สำเร็จ'));
+  });
+
+  it('ignores a second click while the file picker is still open', async () => {
+    let calls = 0;
+    pickFile = () => {
+      calls++;
+      return new Promise<string | null>(() => {});
+    };
+    await mount();
+    const restore = buttonByText(main, 'กู้คืนข้อมูล');
+    restore.click();
+    restore.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(calls).toBe(1);
   });
 });
