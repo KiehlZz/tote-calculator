@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { columnLabel, formatTotal, groupByColumn, sanitizeDigits } from '../src/ui/helpers';
+import { columnLabel, formatTotal, groupByColumn, sanitizeDigits, validateSessionName } from '../src/ui/helpers';
 import { COLUMNS } from '../src/domain/columns';
 
 describe('sanitizeDigits', () => {
@@ -70,5 +70,15 @@ describe('groupByColumn', () => {
 
   it('throws for a multiplier outside the six columns', () => {
     expect(() => groupByColumn([{ columnMultiplier: 90 }])).toThrow(/Unknown column multiplier/);
+  });
+});
+
+describe('validateSessionName', () => {
+  it.each(['', '   ', '\t\n'])('rejects blank name %j', (name) => {
+    expect(validateSessionName(name)).toBe('กรุณากรอกชื่อชุดข้อมูล');
+  });
+
+  it.each(['รอบเช้า', ' a ', '123'])('accepts %j', (name) => {
+    expect(validateSessionName(name)).toBeNull();
   });
 });

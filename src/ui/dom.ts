@@ -9,3 +9,10 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   node.append(...children);
   return node;
 }
+
+export function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
+  const node = el('button', className, label);
+  node.type = 'button';
+  node.addEventListener('click', onClick);
+  return node;
+}

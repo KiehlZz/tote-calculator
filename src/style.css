@@ -64,3 +64,147 @@ body {
   text-decoration: none;
   cursor: pointer;
 }
+
+[hidden] {
+  display: none !important;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.btn-danger {
+  border-color: #b42318;
+  color: #b42318;
+}
+
+.btn-danger-solid {
+  border-color: #b42318;
+  background: #b42318;
+  color: #ffffff;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toolbar h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.banner {
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid #f5c2bd;
+  border-radius: 8px;
+  background: #fdecea;
+  color: #7a1c13;
+}
+
+.session-list {
+  display: grid;
+  gap: 12px;
+}
+
+.session-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.session-info {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.session-name {
+  margin: 0;
+  font-size: 1.0625rem;
+  overflow-wrap: anywhere;
+}
+
+.session-info p {
+  margin: 4px 0 0;
+}
+
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.modal-title {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.field-label {
+  display: block;
+  font-weight: 600;
+}
+
+.field-input {
+  display: block;
+  width: 100%;
+  min-height: var(--tap-size);
+  margin-top: 4px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 1rem; /* 16px: smaller text makes Safari on iPad zoom in when the field is focused */
+}
+
+.field-error {
+  margin: 8px 0 0;
+  color: #b42318;
+  font-size: 0.875rem;
+}

@@ -36,3 +36,8 @@ export function groupByColumn<T extends { columnMultiplier: number }>(
     items: items.filter((item) => item.columnMultiplier === multiplier),
   }));
 }
+
+// returns an error message, or null when the name is acceptable
+export function validateSessionName(name: string): string | null {
+  return name.trim() === '' ? 'กรุณากรอกชื่อชุดข้อมูล' : null;
+}
