@@ -2,16 +2,49 @@ import { button, el } from './dom';
 import { sanitizeDigits } from './helpers';
 
 // Shows the card on a dimmed backdrop. Returns a function that removes it again.
+let modalCounter = 0;
+
+function focusableIn(card: HTMLElement): HTMLElement[] {
+  return [...card.querySelectorAll<HTMLElement>('button, input, a[href]')].filter(
+    (node) => !node.hasAttribute('disabled') && !node.hidden,
+  );
+}
+
+// Shows the card on a dimmed backdrop. Returns a function that removes it again.
 function mountModal(card: HTMLElement, onCancel: () => void): () => void {
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const backdrop = el('div', 'modal-backdrop', card);
   card.setAttribute('role', 'dialog');
   card.setAttribute('aria-modal', 'true');
 
+  const title = card.querySelector('.modal-title');
+  if (title) {
+    modalCounter += 1;
+    title.id = `modal-title-${modalCounter}`;
+    card.setAttribute('aria-labelledby', title.id);
+  }
+
   const onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    // keep keyboard focus inside the dialog
+    const nodes = focusableIn(card);
+    if (nodes.length === 0) return;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    const active = document.activeElement;
+    const inside = active !== null && card.contains(active);
+    if (event.shiftKey && (!inside || active === first)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (!inside || active === last)) {
+      event.preventDefault();
+      first.focus();
     }
   };
   backdrop.addEventListener('click', (event) => {
