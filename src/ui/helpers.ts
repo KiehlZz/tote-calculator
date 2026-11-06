@@ -1,4 +1,5 @@
 import { COLUMNS, isValidColumn, type ColumnMultiplier } from '../domain/columns';
+import { isValidNumber } from '../domain/validators';
 
 // keeps only the digits 0-9 (Thai digits and full-width digits are dropped), max 3
 export function sanitizeDigits(raw: string): string {
@@ -40,4 +41,9 @@ export function groupByColumn<T extends { columnMultiplier: number }>(
 // returns an error message, or null when the name is acceptable
 export function validateSessionName(name: string): string | null {
   return name.trim() === '' ? 'กรุณากรอกชื่อชุดข้อมูล' : null;
+}
+
+// returns an error message, or null when the number is acceptable
+export function validateEntryNumber(value: string): string | null {
+  return isValidNumber(value) ? null : 'กรุณากรอกเลข 3 หลัก';
 }

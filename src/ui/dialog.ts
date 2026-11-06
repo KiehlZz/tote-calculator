@@ -1,4 +1,5 @@
 import { button, el } from './dom';
+import { sanitizeDigits } from './helpers';
 
 // Shows the card on a dimmed backdrop. Returns a function that removes it again.
 function mountModal(card: HTMLElement, onCancel: () => void): () => void {
@@ -125,6 +126,80 @@ export function promptDialog(options: PromptOptions): Promise<string | null> {
         'modal-actions',
         button('ยกเลิก', 'btn', () => finish(null)),
         button(options.confirmLabel, 'btn btn-primary', submit),
+      ),
+    );
+
+    unmount = mountModal(card, () => finish(null));
+    input.focus();
+    input.select();
+  });
+}
+
+export type EditEntryResult = { action: 'save'; number: string } | { action: 'delete' } | null;
+
+export interface EditEntryOptions {
+  title: string;
+  initialValue: string;
+  validate: (value: string) => string | null;
+}
+
+// Resolves with save + new number, delete, or null when cancelled.
+export function editEntryDialog(options: EditEntryOptions): Promise<EditEntryResult> {
+  return new Promise((resolve) => {
+    let done = false;
+    let unmount = (): void => {};
+    const finish = (result: EditEntryResult): void => {
+      if (done) return; // a second click or key press can never resolve twice
+      done = true;
+      unmount();
+      resolve(result);
+    };
+
+    const input = el('input', 'field-input number-input');
+    input.type = 'text';
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('pattern', '[0-9]*');
+    input.autocomplete = 'off';
+    input.value = options.initialValue;
+    input.addEventListener('input', () => {
+      const clean = sanitizeDigits(input.value);
+      if (clean !== input.value) input.value = clean;
+    });
+
+    const error = el('p', 'field-error');
+    error.setAttribute('role', 'alert');
+    error.hidden = true;
+
+    const submit = (): void => {
+      const message = options.validate(input.value);
+      if (message !== null) {
+        error.textContent = message;
+        error.hidden = false;
+        input.focus();
+        return;
+      }
+      finish({ action: 'save', number: input.value });
+    };
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.isComposing) {
+        event.preventDefault();
+        submit();
+      }
+    });
+
+    const card = el(
+      'div',
+      'modal',
+      el('h2', 'modal-title', options.title),
+      el('label', 'field-label', 'เลข 3 หลัก', input),
+      error,
+      el(
+        'div',
+        'modal-actions',
+        button('ลบ', 'btn btn-danger', () => finish({ action: 'delete' })),
+        button('ยกเลิก', 'btn', () => finish(null)),
+        button('บันทึก', 'btn btn-primary', submit),
       ),
     );
 

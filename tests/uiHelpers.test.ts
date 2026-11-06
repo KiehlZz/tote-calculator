@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { columnLabel, formatTotal, groupByColumn, sanitizeDigits, validateSessionName } from '../src/ui/helpers';
+import { columnLabel, formatTotal, groupByColumn, sanitizeDigits, validateEntryNumber,validateSessionName } from '../src/ui/helpers';
 import { COLUMNS } from '../src/domain/columns';
 
 describe('sanitizeDigits', () => {
@@ -80,5 +80,15 @@ describe('validateSessionName', () => {
 
   it.each(['รอบเช้า', ' a ', '123'])('accepts %j', (name) => {
     expect(validateSessionName(name)).toBeNull();
+  });
+});
+
+describe('validateEntryNumber', () => {
+  it.each(['', '12', '1234', 'abc'])('rejects %j', (value) => {
+    expect(validateEntryNumber(value)).toBe('กรุณากรอกเลข 3 หลัก');
+  });
+
+  it.each(['123', '007'])('accepts %j', (value) => {
+    expect(validateEntryNumber(value)).toBeNull();
   });
 });

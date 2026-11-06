@@ -1,5 +1,7 @@
 import { db } from '../db/db';
+import { createEntryRepo } from '../db/entryRepo';
 import { createSessionRepo } from '../db/sessionRepo';
+import { loadCalculator, mountCalculator } from './calculatorView';
 import { el } from './dom';
 import { renderHome } from './homeView';
 import { parseRoute } from './router';
@@ -24,12 +26,10 @@ function renderFatal(root: HTMLElement, error: unknown): void {
   );
 }
 
-// TEMPORARY placeholder, replaced in step 4
-function sessionPlaceholder(id: number, name: string | undefined): HTMLElement[] {
+function notFoundView(id: number): HTMLElement[] {
   const back = el('a', 'btn', 'กลับหน้าหลัก');
   back.setAttribute('href', '#/');
-  const message = name === undefined ? `ไม่พบชุดข้อมูลหมายเลข ${id}` : `ชุดที่ ${id}: ${name}`;
-  return [el('p', '', message), back];
+  return [el('p', '', `ไม่พบชุดข้อมูลหมายเลข ${id}`), back];
 }
 
 export async function startApp(root: HTMLElement): Promise<void> {
@@ -41,6 +41,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   }
 
   const sessions = createSessionRepo(db);
+  const entries = createEntryRepo(db);
   const main = el('main', 'screen');
   root.replaceChildren(buildHeader(), main);
 
@@ -56,9 +57,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
       if (route.name === 'home') {
         await renderHome(main, { sessions, navigate });
       } else {
-        const session = await sessions.get(route.id);
+        const data = await loadCalculator(sessions, entries, route.id);
         if (mine !== token) return; // a newer navigation started while we were reading
-        main.replaceChildren(...sessionPlaceholder(route.id, session?.name));
+        if (data) {
+          mountCalculator(main, data, { entries });
+        } else {
+          main.replaceChildren(...notFoundView(route.id));
+        }
       }
     } catch (error) {
       if (mine === token) renderFatal(root, error);

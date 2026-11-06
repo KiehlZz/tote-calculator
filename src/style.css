@@ -208,3 +208,152 @@ body {
   color: #b42318;
   font-size: 0.875rem;
 }
+
+.modal-actions .btn-danger {
+  margin-right: auto;
+}
+
+.calc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.calc-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 1.125rem;
+  overflow-wrap: anywhere;
+}
+
+.calc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* tablet in landscape: inputs on the left, live results on the right */
+@media (min-width: 900px) and (orientation: landscape) {
+  .calc-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .results {
+    position: sticky;
+    top: 8px;
+  }
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.column-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.column-head h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--color-primary);
+}
+
+.number-input {
+  width: 100%;
+  min-height: var(--tap-size);
+  padding: 0 8px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 1.25rem; /* above 16px so Safari on iPad does not zoom in */
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.number-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.entry-chip {
+  min-height: var(--tap-size);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f0f4f8;
+  font: inherit;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.results {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.results h3 {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+}
+
+.result-summary {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.result-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-table th,
+.result-table td {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.result-table th.num,
+.result-table td.num {
+  text-align: right;
+}
+
+.result-table td.key {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
