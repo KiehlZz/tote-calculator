@@ -418,3 +418,53 @@ a.btn,
     max-height: calc(100dvh - 180px);
   }
 }
+
+.pwa-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50; /* below dialogs, which use 100 */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px calc(16px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom))
+    calc(16px + env(safe-area-inset-left));
+  background: #1b1f23;
+  color: #ffffff;
+}
+
+.pwa-text {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.pwa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pwa-bar .btn {
+  border-color: #ffffff;
+  background: transparent;
+  color: #ffffff;
+}
+
+.pwa-bar .btn-primary {
+  background: #ffffff;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.pwa-bar .btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* room at the bottom of the page so the bar never covers the last inputs (approximate height) */
+body.has-pwa-bar {
+  padding-bottom: 120px;
+}
