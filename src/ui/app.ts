@@ -7,6 +7,7 @@ import { el } from './dom';
 import { pickTextFile, saveTextFile } from './files';
 import { renderHome, type BackupDeps } from './homeView';
 import { parseRoute } from './router';
+import { requestPersistence } from '../utils/storage';
 
 const APP_NAME = 'เครื่องคิดเลขโต๊ด';
 
@@ -44,6 +45,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   const sessions = createSessionRepo(db);
   const entries = createEntryRepo(db);
+  // asked once per app launch, in the background
+  const storageStatus = requestPersistence(navigator.storage);
   const backup: BackupDeps = {
     exportBackup: () => exportBackup(db),
     importBackup: (data, mode) => importBackup(db, data, mode),
@@ -64,7 +67,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     try {
       const route = parseRoute(window.location.hash);
       if (route.name === 'home') {
-        await renderHome(main, { sessions, navigate, backup });
+        await renderHome(main, { sessions, navigate, backup, storageStatus });
       } else {
         const data = await loadCalculator(sessions, entries, route.id);
         if (mine !== token) return; // a newer navigation started while we were reading

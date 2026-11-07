@@ -13,6 +13,7 @@ import { formatThaiDate, formatThaiDateTime } from '../utils/thaiDate';
 import { choiceDialog, confirmDialog, promptDialog } from './dialog';
 import { button, el } from './dom';
 import { validateSessionName } from './helpers';
+import { STORAGE_CHECKING_MESSAGE, storageMessage, type StorageStatus } from '../utils/storage';
 
 export interface BackupDeps {
   exportBackup: () => Promise<BackupFile>;
@@ -28,6 +29,7 @@ export interface HomeDeps {
   sessions: SessionRepo;
   navigate: (hash: string) => void;
   backup: BackupDeps;
+  storageStatus: Promise<StorageStatus>;
 }
 
 function countEntries(data: BackupFile): number {
@@ -35,7 +37,7 @@ function countEntries(data: BackupFile): number {
 }
 
 export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<void> {
-  const { sessions, navigate, backup } = deps;
+  const { sessions, navigate, backup, storageStatus } = deps;
 
   const banner = el('div', 'banner');
   banner.setAttribute('role', 'alert');
@@ -265,6 +267,18 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
     showStatus(`กู้คืนสำเร็จ: ${result.sessions} ชุด ${result.entries} รายการ`);
   }
 
+  const storageNote = el('p', 'muted storage-note', STORAGE_CHECKING_MESSAGE);
+  storageNote.setAttribute('role', 'status');
+  // deliberately not awaited: the list must never wait for the browser's answer
+  storageStatus.then(
+    (status) => {
+      storageNote.textContent = storageMessage(status);
+    },
+    () => {
+      storageNote.textContent = storageMessage('unknown');
+    },
+  );
+
   main.replaceChildren(
     el(
       'div',
@@ -281,6 +295,7 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
     banner,
     status,
     list,
+    storageNote,
   );
   await refresh();
 }

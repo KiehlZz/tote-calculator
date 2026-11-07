@@ -468,3 +468,7 @@ a.btn,
 body.has-pwa-bar {
   padding-bottom: 120px;
 }
+
+.storage-note {
+  margin: 16px 0 0;
+}

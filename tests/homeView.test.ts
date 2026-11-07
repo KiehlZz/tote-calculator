@@ -7,6 +7,7 @@ import { createEntryRepo } from '../src/db/entryRepo';
 import { createSessionRepo } from '../src/db/sessionRepo';
 import { renderHome } from '../src/ui/homeView';
 import { exportBackup, importBackup, parseBackup, type BackupFile, type ImportMode } from '../src/db/backup';
+import type { StorageStatus } from '../src/utils/storage';
 
 let counter = 0;
 let tick = 0;
@@ -22,6 +23,7 @@ const clock = () => new Date(Date.UTC(2026, 0, 1, 0, 0, tick++)).toISOString();
 let saved: { filename: string; text: string }[] = [];
 let saveResult = true;
 let pickFile: () => Promise<string | null> = async () => null;
+let storageStatus: Promise<StorageStatus> = Promise.resolve('persistent');
 
 const backupDeps = {
   exportBackup: () => exportBackup(db, () => '2026-11-05T10:00:00.000Z'),
@@ -44,6 +46,7 @@ beforeEach(() => {
   saved = [];
   saveResult = true;
   pickFile = async () => null;
+  storageStatus = Promise.resolve('persistent');
   document.body.replaceChildren();
   main = document.createElement('main');
   document.body.append(main);
@@ -56,7 +59,7 @@ afterEach(async () => {
   await Dexie.delete(dbName);
 });
 
-const mount = () => renderHome(main, { sessions, navigate, backup: backupDeps });
+const mount = () => renderHome(main, { sessions, navigate, backup: backupDeps, storageStatus });
 const names = () => [...main.querySelectorAll('.session-name')].map((n) => n.textContent);
 const modal = () => document.body.querySelector('.modal');
 const modalInput = () => document.body.querySelector('.modal input') as HTMLInputElement;
@@ -405,5 +408,41 @@ describe('Restore', () => {
     restore.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(calls).toBe(1);
+  });
+});
+
+const storageNote = () => main.querySelector('.storage-note') as HTMLElement;
+
+describe('Storage status line', () => {
+  it('shows a checking message first, then the status once it is known', async () => {
+    let resolveStatus!: (status: StorageStatus) => void;
+    storageStatus = new Promise<StorageStatus>((resolve) => {
+      resolveStatus = resolve;
+    });
+    await mount();
+    expect(storageNote().textContent).toContain('กำลังตรวจสอบ');
+    resolveStatus('persistent');
+    await vi.waitFor(() => expect(storageNote().textContent).toContain('ถาวร'));
+  });
+
+  it('warns and suggests a backup when storage is not persistent', async () => {
+    storageStatus = Promise.resolve('not-persistent');
+    await mount();
+    await vi.waitFor(() => expect(storageNote().textContent).toContain('อาจลบข้อมูล'));
+    expect(storageNote().textContent).toContain('สำรอง');
+  });
+
+  it('lists the sessions without waiting for the storage check', async () => {
+    await sessions.create('A');
+    storageStatus = new Promise<StorageStatus>(() => {});
+    await mount();
+    expect(names()).toEqual(['A']);
+    expect(storageNote().textContent).toContain('กำลังตรวจสอบ');
+  });
+
+  it('falls back to the unknown message when the check fails', async () => {
+    storageStatus = Promise.reject(new Error('x'));
+    await mount();
+    await vi.waitFor(() => expect(storageNote().textContent).toContain('ตรวจสอบสถานะไม่ได้'));
   });
 });
