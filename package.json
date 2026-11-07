@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "verify:pwa": "node scripts/verify-precache.mjs"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.7",
