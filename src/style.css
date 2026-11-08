@@ -472,3 +472,7 @@ body.has-pwa-bar {
 .storage-note {
   margin: 16px 0 0;
 }
+
+.version-note {
+  margin: 4px 0 0;
+}

@@ -8,6 +8,7 @@ import { createSessionRepo } from '../src/db/sessionRepo';
 import { renderHome } from '../src/ui/homeView';
 import { exportBackup, importBackup, parseBackup, type BackupFile, type ImportMode } from '../src/db/backup';
 import type { StorageStatus } from '../src/utils/storage';
+import { APP_VERSION } from '../src/version';
 
 let counter = 0;
 let tick = 0;
@@ -444,5 +445,13 @@ describe('Storage status line', () => {
     storageStatus = Promise.reject(new Error('x'));
     await mount();
     await vi.waitFor(() => expect(storageNote().textContent).toContain('ตรวจสอบสถานะไม่ได้'));
+  });
+});
+
+describe('Version line', () => {
+  it('shows the app version under the storage line', async () => {
+    await mount();
+    const note = main.querySelector('.version-note') as HTMLElement;
+    expect(note.textContent).toBe(`เวอร์ชัน ${APP_VERSION}`);
   });
 });

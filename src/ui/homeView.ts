@@ -14,6 +14,7 @@ import { choiceDialog, confirmDialog, promptDialog } from './dialog';
 import { button, el } from './dom';
 import { validateSessionName } from './helpers';
 import { STORAGE_CHECKING_MESSAGE, storageMessage, type StorageStatus } from '../utils/storage';
+import { APP_VERSION } from '../version';
 
 export interface BackupDeps {
   exportBackup: () => Promise<BackupFile>;
@@ -296,6 +297,7 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
     status,
     list,
     storageNote,
+    el('p', 'muted version-note', `เวอร์ชัน ${APP_VERSION}`),
   );
   await refresh();
 }
