@@ -14,7 +14,8 @@
     "build:pages": "tsc && vite build --base=/tote-calculator/",
     "preview:pages": "vite preview --base=/tote-calculator/ --port 4174 --strictPort",
     "verify:base": "node scripts/verify-base.mjs /tote-calculator/",
-    "check:pages": "npm test && npm run build:pages && npm run verify:pwa && npm run verify:base"
+    "check:pages": "npm test && npm run build:pages && npm run verify:pwa && npm run verify:base",
+    "sample": "node scripts/make-sample-backup.mjs"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.7",
