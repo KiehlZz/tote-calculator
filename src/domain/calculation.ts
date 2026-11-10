@@ -1,6 +1,7 @@
 // หน้าที่: หาเลขตัวแทน รวมกลุ่ม บวกตัวคูณ นับรายการ และเรียงผลลัพธ์ ไม่มี Set, ไม่ dedupe, ไม่แก้ array ต้นทาง
-// getToteKey, calculate (รวมกลุ่ม, บวกตัวคูณ, นับรายการ, เรียงผลลัพธ์)
+// getToteKey, calculate (รวมกลุ่ม, บวกตัวคูณ, นับรายการ, เรียงผลลัพธ์) รองรับโหมด 3 ตัว (ค่าเริ่มต้น) และ 4 ตัว
 
+import { DEFAULT_MODE, type Mode } from './columns';
 import { isValidMultiplier, isValidNumber } from './validators';
 
 export interface EntryInput {
@@ -20,22 +21,22 @@ export interface CalculationResult {
   groupCount: number;
 }
 
-export function getToteKey(number: string): string {
-  if (!isValidNumber(number)) {
+export function getToteKey(number: string, mode: Mode = DEFAULT_MODE): string {
+  if (!isValidNumber(number, mode)) {
     throw new Error(`Invalid number: ${JSON.stringify(number)}`);
   }
   return number.split('').sort().join('');
 }
 
-export function calculate(entries: readonly EntryInput[]): CalculationResult {
+export function calculate(entries: readonly EntryInput[], mode: Mode = DEFAULT_MODE): CalculationResult {
   const groups = new Map<string, ToteGroup>();
 
   entries.forEach((entry, index) => {
-    if (!isValidNumber(entry.number) || !isValidMultiplier(entry.columnMultiplier)) {
+    if (!isValidNumber(entry.number, mode) || !isValidMultiplier(entry.columnMultiplier, mode)) {
       throw new Error(`Invalid entry at index ${index}: ${JSON.stringify(entry)}`);
     }
 
-    const key = getToteKey(entry.number);
+    const key = getToteKey(entry.number, mode);
     const group = groups.get(key);
 
     if (group) {
