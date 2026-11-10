@@ -84,7 +84,7 @@ describe('calculate', () => {
   });
 
   it('gives the same result regardless of entry order', () => {
-    const entries = [e('123', 30), e('456', 60), e('321', 120), e('654', 30), e('789', 210)];
+    const entries = [e('123', 30), e('456', 60), e('321', 120), e('654', 30), e('789', 180)];
     expect(calculate([...entries].reverse())).toEqual(calculate(entries));
   });
 
@@ -106,16 +106,16 @@ describe('calculate', () => {
     expect(result.groups.find((g) => g.key === '123')?.count).toBe(2);
   });
 
-  it('supports all six columns: one number in each = 750', () => {
+  it('supports all six columns: one number in each = 555', () => {
     const result = calculate([
-      e('123', 30),
-      e('321', 60),
-      e('132', 120),
-      e('213', 150),
-      e('231', 180),
-      e('312', 210),
+      e('123', 15),
+      e('321', 30),
+      e('132', 60),
+      e('213', 120),
+      e('231', 150),
+      e('312', 180),
     ]);
-    expect(result.groups).toEqual([{ key: '123', total: 750, count: 6 }]);
+    expect(result.groups).toEqual([{ key: '123', total: 555, count: 6 }]);
   });
 
   it('does not mutate its input', () => {

@@ -3,6 +3,7 @@
 import { isValidMultiplier, isValidNumber } from '../domain/validators';
 import { systemClock, type ToteDatabase } from './db';
 import type { Clock } from './types';
+import { COLUMNS } from '../domain/columns';
 
 export const BACKUP_APP_ID = 'tote-calculator';
 export const BACKUP_SCHEMA_VERSION = 1;
@@ -65,7 +66,7 @@ function validateEntry(raw: unknown, path: string): BackupEntry {
   const updatedAt = raw.updatedAt;
   if (!isValidNumber(number)) fail(`${path}.number`, `invalid number ${JSON.stringify(number)}`);
   if (typeof columnMultiplier !== 'number' || !isValidMultiplier(columnMultiplier)) {
-    fail(`${path}.columnMultiplier`, `invalid multiplier ${JSON.stringify(columnMultiplier)}`);
+    fail(`${path}.columnMultiplier`, `invalid multiplier ${JSON.stringify(columnMultiplier)} (allowed: ${COLUMNS.join(', ')})`);
   }
   if (!isIso(createdAt)) fail(`${path}.createdAt`, 'must be an ISO timestamp');
   if (!isIso(updatedAt)) fail(`${path}.updatedAt`, 'must be an ISO timestamp');

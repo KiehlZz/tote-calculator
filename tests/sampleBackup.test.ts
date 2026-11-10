@@ -22,7 +22,7 @@ describe('makeSampleBackup', () => {
 
   it('uses all six columns', () => {
     const columns = new Set(makeSampleBackup(300).sessions[0].entries.map((entry) => entry.columnMultiplier));
-    expect([...columns].sort((a, b) => a - b)).toEqual([30, 60, 120, 150, 180, 210]);
+    expect([...columns].sort((a, b) => a - b)).toEqual([15, 30, 60, 120, 150, 180]);
   });
 
   it('groups 007 and 700 together', () => {

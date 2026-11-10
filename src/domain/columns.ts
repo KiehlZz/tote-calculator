@@ -1,7 +1,7 @@
 // หน้าที่: กำหนดค่าตัวคูณทั้ง 6 คอลัมน์ที่ล็อกตายตัว
 // ค่าคงที่ 6 คอลัมน์: 30, 60, 120, 150, 180, 210
 
-export const COLUMNS = [30, 60, 120, 150, 180, 210] as const;
+export const COLUMNS = [15, 30, 60, 120, 150, 180] as const;
 
 export type ColumnMultiplier = (typeof COLUMNS)[number];
 

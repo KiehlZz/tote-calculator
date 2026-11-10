@@ -1,4 +1,4 @@
-const COLUMNS = [30, 60, 120, 150, 180, 210];
+const COLUMNS = [15, 30, 60, 120, 150, 180];
 
 // small deterministic random generator, so the same sample is produced every time
 function createRandom(seed) {

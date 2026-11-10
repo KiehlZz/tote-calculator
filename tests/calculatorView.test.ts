@@ -69,7 +69,7 @@ describe('Calculator screen', () => {
     await mountSession(s.id);
     expect(main.querySelector('.calc-title')?.textContent).toBe('รอบเช้า');
     expect([...main.querySelectorAll('.column h3')].map((h) => h.textContent)).toEqual([
-      'x30', 'x60', 'x120', 'x150', 'x180', 'x210',
+      'x15', 'x30', 'x60', 'x120', 'x150', 'x180',
     ]);
     expect(main.querySelectorAll('.column input')).toHaveLength(6);
     expect(main.querySelector('.results')!.textContent).toContain('ยังไม่มีข้อมูล');

@@ -19,7 +19,7 @@ describe('sanitizeDigits', () => {
 
 describe('columnLabel', () => {
   it('labels the six columns', () => {
-    expect(COLUMNS.map(columnLabel)).toEqual(['x30', 'x60', 'x120', 'x150', 'x180', 'x210']);
+    expect(COLUMNS.map(columnLabel)).toEqual(['x15','x30','x60','x120','x150','x180']);
   });
 });
 
@@ -45,7 +45,7 @@ describe('formatTotal', () => {
 describe('groupByColumn', () => {
   it('returns all six columns in order even when there are no items', () => {
     const groups = groupByColumn([]);
-    expect(groups.map((g) => g.multiplier)).toEqual([30, 60, 120, 150, 180, 210]);
+    expect(groups.map((g) => g.multiplier)).toEqual([15, 30, 60, 120, 150, 180]);
     expect(groups.every((g) => g.items.length === 0)).toBe(true);
   });
 
@@ -54,18 +54,18 @@ describe('groupByColumn', () => {
       { id: 'a', columnMultiplier: 60 },
       { id: 'b', columnMultiplier: 30 },
       { id: 'c', columnMultiplier: 60 },
-      { id: 'd', columnMultiplier: 210 },
+      { id: 'd', columnMultiplier: 180 },
     ];
     const ids = (m: number) => groupByColumn(items).find((g) => g.multiplier === m)!.items.map((i) => i.id);
     expect(ids(30)).toEqual(['b']);
     expect(ids(60)).toEqual(['a', 'c']);
     expect(ids(120)).toEqual([]);
-    expect(ids(210)).toEqual(['d']);
+    expect(ids(180)).toEqual(['d']);
   });
 
   it('keeps duplicates: five identical items stay five', () => {
     const items = Array.from({ length: 5 }, () => ({ number: '123', columnMultiplier: 30 }));
-    expect(groupByColumn(items)[0].items).toHaveLength(5);
+    expect(groupByColumn(items).find((g) => g.multiplier === 30)!.items).toHaveLength(5);
   });
 
   it('throws for a multiplier outside the six columns', () => {

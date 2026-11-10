@@ -118,6 +118,15 @@ async function showHome(app: Launched): Promise<void> {
   );
 }
 
+async function seedRetiredColumn(dbName: string): Promise<void> {
+  const seed = new ToteDatabase(dbName);
+  const t = '2026-11-01T01:00:00.000Z';
+  const sessionId = await seed.sessions.add({ name: 'เก่า', createdAt: t, updatedAt: t });
+  await seed.entries.add({ sessionId, number: '123', columnMultiplier: 30, createdAt: t, updatedAt: t });
+  await seed.entries.add({ sessionId, number: '321', columnMultiplier: 210, createdAt: t, updatedAt: t });
+  seed.close();
+}
+
 async function openSession(app: Launched, name: string): Promise<void> {
   const row = sessionRows(app.root).find((r) => r.querySelector('.session-name')?.textContent === name)!;
   goTo((row.querySelector('a.btn-primary') as HTMLAnchorElement).getAttribute('href')!);
@@ -283,5 +292,29 @@ describe('whole app', () => {
   it('shows the storage status line from the browser storage API', async () => {
     const app = await launch(newDbName());
     await vi.waitFor(() => expect(app.root.textContent).toContain('ที่เก็บข้อมูล: ถาวร'));
+  });
+
+    it('asks before removing entries of a retired column, then runs normally', async () => {
+    const name = newDbName();
+    await seedRetiredColumn(name);
+    const pending = launch(name); // waits for the user's answer, so it is not awaited yet
+    await vi.waitFor(() => expect(buttonByText(document.body, 'ลบรายการ x210')).toBeTruthy());
+    buttonByText(document.body, 'ลบรายการ x210').click();
+    const app = await pending;
+    await vi.waitFor(() => expect(sessionRows(app.root)).toHaveLength(1));
+    await openSession(app, 'เก่า');
+    expect(chips(app.root, 'x30')).toEqual(['123']);
+    expect(resultRows(app.root)).toEqual([['123', '30', '1']]);
+  });
+
+  it('stays blocked with the data untouched when the user declines', async () => {
+    const name = newDbName();
+    await seedRetiredColumn(name);
+    const pending = launch(name);
+    await vi.waitFor(() => expect(buttonByText(document.body, 'ยังไม่ลบ')).toBeTruthy());
+    buttonByText(document.body, 'ยังไม่ลบ').click();
+    const app = await pending;
+    expect(app.root.textContent).toContain('ยังใช้งานไม่ได้');
+    expect(await app.db.entries.count()).toBe(2);
   });
 });

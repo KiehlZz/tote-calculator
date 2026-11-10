@@ -21,11 +21,11 @@ describe('isValidNumber', () => {
 });
 
 describe('isValidMultiplier', () => {
-  it.each([30, 60, 120, 150, 180, 210])('accepts %s', (value) => {
+  it.each([15, 30, 60, 120, 150, 180])('accepts %s', (value) => {
     expect(isValidMultiplier(value)).toBe(true);
   });
 
-  it.each([90, 0, -30, 30.5, NaN, '30', null])('rejects %s', (value) => {
+  it.each([90, 210, 0, -30, 30.5, NaN, '30', null])('rejects %s', (value) => {
     expect(isValidMultiplier(value)).toBe(false);
   });
 });

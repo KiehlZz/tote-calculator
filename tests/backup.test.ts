@@ -99,7 +99,7 @@ describe('exportBackup', () => {
   it('survives serialize and parse unchanged (round trip)', async () => {
     const a = await sessions.create('A');
     await entries.add(a.id, '007', 30);
-    await entries.add(a.id, '123', 210);
+    await entries.add(a.id, '123', 180);
     const exported = await exportBackup(db, () => FIXED_NOW);
     expect(parseBackup(serializeBackup(exported))).toEqual(exported);
   });
@@ -146,6 +146,12 @@ describe('parseBackup', () => {
     expect(() => parseBackup(JSON.stringify(b))).toThrow(BackupError);
   });
 });
+
+  it('names the allowed columns when a multiplier is rejected', () => {
+    const b = makeBackup();
+    b.sessions[0].entries[0].columnMultiplier = 210;
+    expect(() => parseBackup(JSON.stringify(b))).toThrow(/allowed: 15, 30, 60, 120, 150, 180/);
+  });
 
 describe('importBackup', () => {
   it('merge adds the sessions and leaves existing data untouched', async () => {
@@ -265,7 +271,7 @@ describe('importBackup', () => {
     const b = await sessions.create('B');
     await entries.add(a.id, '007', 30);
     await entries.add(a.id, '007', 30);
-    await entries.add(a.id, '123', 210);
+    await entries.add(a.id, '123', 180);
     await entries.add(b.id, '555', 60);
 
     const exported = await exportBackup(db, () => FIXED_NOW);

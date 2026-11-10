@@ -9,6 +9,7 @@ import { el } from './dom';
 import { pickTextFile, saveTextFile } from './files';
 import { renderHome, type BackupDeps } from './homeView';
 import { parseRoute } from './router';
+import { resolveLegacyEntries } from './legacyGate';
 
 const APP_NAME = 'เครื่องคิดเลขโต๊ด';
 
@@ -34,6 +35,18 @@ function notFoundView(id: number): HTMLElement[] {
   const back = el('a', 'btn', 'กลับหน้าหลัก');
   back.setAttribute('href', '#/');
   return [el('p', '', `ไม่พบชุดข้อมูลหมายเลข ${id}`), back];
+}
+
+function renderBlocked(root: HTMLElement): void {
+  root.replaceChildren(
+    buildHeader(),
+    el(
+      'main',
+      'screen',
+      el('h2', '', 'ยังใช้งานไม่ได้'),
+      el('p', '', 'ต้องลบรายการของคอลัมน์ที่เลิกใช้แล้วก่อน ข้อมูลของคุณยังไม่ถูกเปลี่ยนแปลง ปิดแอปแล้วเปิดใหม่เพื่อเลือกอีกครั้ง'),
+    ),
+  );
 }
 
 // Everything the app needs from the outside world, so tests can swap it.
@@ -65,6 +78,17 @@ export async function startApp(root: HTMLElement, deps: AppDeps = browserDeps())
 
   try {
     await db.open();
+  } catch (error) {
+    renderFatal(root, error);
+    return { stop: () => {} };
+  }
+
+  try {
+    const gate = await resolveLegacyEntries({ db, saveFile: deps.saveFile, now: deps.now, clock: deps.clock });
+    if (gate === 'blocked') {
+      renderBlocked(root);
+      return { stop: () => {} };
+    }
   } catch (error) {
     renderFatal(root, error);
     return { stop: () => {} };
