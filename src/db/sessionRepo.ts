@@ -1,5 +1,6 @@
 // สร้าง, อ่าน, เปลี่ยนชื่อ, ลบชุด (ลบรายการลูกใน transaction เดียว)
 
+import { DEFAULT_MODE, isValidMode, type Mode } from '../domain/columns';
 import { systemClock, type ToteDatabase } from './db';
 import type { Clock, Session } from './types';
 
@@ -13,11 +14,14 @@ function normalizeName(name: string): string {
 
 export function createSessionRepo(db: ToteDatabase, clock: Clock = systemClock) {
   return {
-    async create(name: string): Promise<Session> {
+    async create(name: string, mode: Mode = DEFAULT_MODE): Promise<Session> {
       const clean = normalizeName(name);
+      if (!isValidMode(mode)) {
+        throw new Error(`Invalid session mode: ${JSON.stringify(mode)}`);
+      }
       const now = clock();
-      const id = await db.sessions.add({ name: clean, createdAt: now, updatedAt: now });
-      return { id, name: clean, createdAt: now, updatedAt: now };
+      const id = await db.sessions.add({ name: clean, createdAt: now, updatedAt: now, mode });
+      return { id, name: clean, createdAt: now, updatedAt: now, mode };
     },
 
     get(id: number): Promise<Session | undefined> {

@@ -3,7 +3,7 @@
 import { isValidMultiplier, isValidNumber } from '../domain/validators';
 import { systemClock, type ToteDatabase } from './db';
 import type { Clock } from './types';
-import { COLUMNS } from '../domain/columns';
+import { COLUMNS, DEFAULT_MODE } from '../domain/columns';
 
 export const BACKUP_APP_ID = 'tote-calculator';
 export const BACKUP_SCHEMA_VERSION = 1;
@@ -177,6 +177,7 @@ export async function importBackup(
         name: s.name,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
+        mode: DEFAULT_MODE, // 10.4 จะอ่านโหมดจากไฟล์ backup
       });
       if (s.entries.length > 0) {
         await db.entries.bulkAdd(s.entries.map((e) => ({ sessionId, ...e })));

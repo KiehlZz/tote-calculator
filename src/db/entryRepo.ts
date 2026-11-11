@@ -1,19 +1,21 @@
 // เพิ่ม, อ่านตามชุด, แก้, ลบรายการ
 
+import type { Mode } from '../domain/columns';
 import { isValidMultiplier, isValidNumber } from '../domain/validators';
 import { systemClock, type ToteDatabase } from './db';
-import type { Clock, Entry } from './types';
+import { sessionMode, type Clock, type Entry } from './types';
 
 export interface EntryChanges {
   number?: string;
   columnMultiplier?: number;
 }
 
-function assertValid(number: unknown, columnMultiplier: unknown): void {
-  if (!isValidNumber(number)) {
+// ตรวจตามโหมดของเซสชัน: 3 ตัว = เลข 3 หลัก + x15..x180, 4 ตัว = เลข 4 หลัก + x24/x48
+function assertValid(number: unknown, columnMultiplier: unknown, mode: Mode): void {
+  if (!isValidNumber(number, mode)) {
     throw new Error(`Invalid number: ${JSON.stringify(number)}`);
   }
-  if (!isValidMultiplier(columnMultiplier)) {
+  if (!isValidMultiplier(columnMultiplier, mode)) {
     throw new Error(`Invalid column multiplier: ${JSON.stringify(columnMultiplier)}`);
   }
 }
@@ -25,10 +27,10 @@ export function createEntryRepo(db: ToteDatabase, clock: Clock = systemClock) {
 
   return {
     async add(sessionId: number, number: string, columnMultiplier: number): Promise<Entry> {
-      assertValid(number, columnMultiplier);
       return db.transaction('rw', db.sessions, db.entries, async () => {
         const session = await db.sessions.get(sessionId);
         if (!session) throw new Error(`Session not found: ${sessionId}`);
+        assertValid(number, columnMultiplier, sessionMode(session));
         const now = clock();
         const data = { sessionId, columnMultiplier, number, createdAt: now, updatedAt: now };
         const id = await db.entries.add(data);
@@ -48,7 +50,7 @@ export function createEntryRepo(db: ToteDatabase, clock: Clock = systemClock) {
         if (!existing) throw new Error(`Entry not found: ${id}`);
         const number = changes.number ?? existing.number;
         const columnMultiplier = changes.columnMultiplier ?? existing.columnMultiplier;
-        assertValid(number, columnMultiplier);
+        assertValid(number, columnMultiplier, sessionMode(await db.sessions.get(existing.sessionId)));
         const now = clock();
         const updated: Entry = { ...existing, number, columnMultiplier, updatedAt: now };
         await db.entries.put(updated);
