@@ -476,3 +476,22 @@ body.has-pwa-bar {
 .version-note {
   margin: 4px 0 0;
 }
+
+/* 4-digit mode: only two columns (x24, x48), always side by side */
+.columns.columns-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* small label showing 3-digit / 4-digit mode */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.session-info .badge {
+  margin-top: 4px;
+}

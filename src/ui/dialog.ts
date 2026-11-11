@@ -1,4 +1,5 @@
 import { button, el } from './dom';
+import type { Mode } from '../domain/columns';
 import { sanitizeDigits } from './helpers';
 
 // Shows the card on a dimmed backdrop. Returns a function that removes it again.
@@ -174,6 +175,7 @@ export interface EditEntryOptions {
   title: string;
   initialValue: string;
   validate: (value: string) => string | null;
+  mode?: Mode; // 3 (default) or 4 digits
 }
 
 // Resolves with save + new number, delete, or null when cancelled.
@@ -188,6 +190,7 @@ export function editEntryDialog(options: EditEntryOptions): Promise<EditEntryRes
       resolve(result);
     };
 
+    const mode: Mode = options.mode ?? 3;
     const input = el('input', 'field-input number-input');
     input.type = 'text';
     input.setAttribute('inputmode', 'numeric');
@@ -195,7 +198,7 @@ export function editEntryDialog(options: EditEntryOptions): Promise<EditEntryRes
     input.autocomplete = 'off';
     input.value = options.initialValue;
     input.addEventListener('input', () => {
-      const clean = sanitizeDigits(input.value);
+      const clean = sanitizeDigits(input.value, mode);
       if (clean !== input.value) input.value = clean;
     });
 
@@ -225,7 +228,7 @@ export function editEntryDialog(options: EditEntryOptions): Promise<EditEntryRes
       'div',
       'modal',
       el('h2', 'modal-title', options.title),
-      el('label', 'field-label', 'เลข 3 หลัก', input),
+      el('label', 'field-label', `เลข ${mode} หลัก`, input),
       error,
       el(
         'div',

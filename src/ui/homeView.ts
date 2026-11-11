@@ -8,11 +8,12 @@ import {
   type ImportResult,
 } from '../db/backup';
 import type { SessionRepo } from '../db/sessionRepo';
-import type { Session } from '../db/types';
+import { sessionMode, type Session } from '../db/types';
+import type { Mode } from '../domain/columns';
 import { formatThaiDate, formatThaiDateTime } from '../utils/thaiDate';
 import { choiceDialog, confirmDialog, promptDialog } from './dialog';
 import { button, el } from './dom';
-import { validateSessionName } from './helpers';
+import { modeLabel, validateSessionName } from './helpers';
 import { STORAGE_CHECKING_MESSAGE, storageMessage, type StorageStatus } from '../utils/storage';
 import { APP_VERSION } from '../version';
 
@@ -101,7 +102,7 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
       'div',
       'empty',
       el('p', '', 'ยังไม่มีชุดข้อมูล'),
-      el('p', 'muted', 'กดปุ่ม “สร้างชุดข้อมูลใหม่” เพื่อเริ่มต้น'),
+      el('p', 'muted', 'กดปุ่ม “สร้างชุดข้อมูลใหม่” (3 ตัว) หรือ “สร้างชุด 4 ตัว” เพื่อเริ่มต้น'),
     );
   }
 
@@ -123,6 +124,7 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
         'div',
         'session-info',
         el('h3', 'session-name', session.name),
+        el('span', 'badge', modeLabel(sessionMode(session))),
         el(
           'p',
           'muted',
@@ -133,9 +135,9 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
     );
   }
 
-  async function onCreate(): Promise<void> {
+  async function onCreate(mode: Mode = 3): Promise<void> {
     const name = await promptDialog({
-      title: 'สร้างชุดข้อมูลใหม่',
+      title: mode === 4 ? 'สร้างชุดข้อมูล 4 ตัวใหม่' : 'สร้างชุดข้อมูลใหม่',
       label: 'ชื่อชุดข้อมูล',
       placeholder: 'เช่น รอบเช้า',
       confirmLabel: 'สร้าง',
@@ -143,7 +145,7 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
     });
     if (name === null) return;
     await attempt(async () => {
-      const created = await sessions.create(name);
+      const created = await sessions.create(name, mode);
       navigate(`#/session/${created.id}`);
     }, 'สร้างชุดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง');
   }
@@ -290,7 +292,8 @@ export async function renderHome(main: HTMLElement, deps: HomeDeps): Promise<voi
         'toolbar-actions',
         button('สำรองข้อมูล', 'btn', () => void exclusive(onBackup)),
         button('กู้คืนข้อมูล', 'btn', () => void exclusive(onRestore)),
-        button('สร้างชุดข้อมูลใหม่', 'btn btn-primary', () => void onCreate()),
+        button('สร้างชุดข้อมูลใหม่', 'btn btn-primary', () => void onCreate(3)),
+        button('สร้างชุด 4 ตัว', 'btn btn-primary', () => void onCreate(4)),
       ),
     ),
     banner,

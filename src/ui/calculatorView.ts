@@ -1,12 +1,12 @@
 import type { EntryRepo } from '../db/entryRepo';
 import type { SessionRepo } from '../db/sessionRepo';
-import type { Entry, Session } from '../db/types';
+import { sessionMode, type Entry, type Session } from '../db/types';
 import { calculate } from '../domain/calculation';
-import { COLUMNS } from '../domain/columns';
+import { getColumns, getDigits } from '../domain/columns';
 import { isValidNumber } from '../domain/validators';
 import { editEntryDialog } from './dialog';
 import { el } from './dom';
-import { columnLabel, formatTotal, groupByColumn, sanitizeDigits, validateEntryNumber } from './helpers';
+import { columnLabel, formatTotal, groupByColumn, modeLabel, sanitizeDigits, validateEntryNumber } from './helpers';
 
 export interface CalculatorData {
   session: Session;
@@ -30,6 +30,8 @@ export async function loadCalculator(
 
 export function mountCalculator(main: HTMLElement, data: CalculatorData, deps: CalculatorDeps): void {
   const { session } = data;
+  const mode = sessionMode(session);
+  const digits = getDigits(mode);
   let items: Entry[] = [...data.entries];
   let queue: Promise<void> = Promise.resolve();
 
@@ -73,7 +75,8 @@ export function mountCalculator(main: HTMLElement, data: CalculatorData, deps: C
     const result = await editEntryDialog({
       title: `แก้ไขเลข · ${columnLabel(entry.columnMultiplier)}`,
       initialValue: entry.number,
-      validate: validateEntryNumber,
+      validate: (value) => validateEntryNumber(value, mode),
+      mode,
     });
     if (result === null) return;
     enqueue(async () => {
@@ -94,20 +97,20 @@ export function mountCalculator(main: HTMLElement, data: CalculatorData, deps: C
     });
   }
 
-  // The six inputs are created once and never redrawn, so focus (and the keyboard) stays put.
-  const columnEls = COLUMNS.map((multiplier) => {
+  // The inputs (six, or two in 4-digit mode) are created once and never redrawn, so focus (and the keyboard) stays put.
+  const columnEls = getColumns(mode).map((multiplier) => {
     const input = el('input', 'number-input');
     input.type = 'text';
     input.setAttribute('inputmode', 'numeric');
     input.setAttribute('pattern', '[0-9]*');
     input.autocomplete = 'off';
     input.spellcheck = false;
-    input.placeholder = 'เลข 3 หลัก';
-    input.setAttribute('aria-label', `กรอกเลข 3 หลัก คอลัมน์ ${columnLabel(multiplier)}`);
+    input.placeholder = `เลข ${digits} หลัก`;
+    input.setAttribute('aria-label', `กรอกเลข ${digits} หลัก คอลัมน์ ${columnLabel(multiplier)}`);
     input.addEventListener('input', () => {
-      const clean = sanitizeDigits(input.value);
+      const clean = sanitizeDigits(input.value, mode);
       if (clean !== input.value) input.value = clean;
-      if (isValidNumber(clean)) {
+      if (isValidNumber(clean, mode)) {
         input.value = ''; // cleared before anything async, so it can never be added twice
         addEntry(multiplier, clean);
       }
@@ -124,7 +127,7 @@ export function mountCalculator(main: HTMLElement, data: CalculatorData, deps: C
   const resultBody = el('div', 'result-body');
 
   function renderLists(): void {
-    for (const group of groupByColumn(items)) {
+    for (const group of groupByColumn(items, mode)) {
       const chips = [...group.items].reverse().map((entry) => {
         const chip = el('button', 'entry-chip', entry.number);
         chip.type = 'button';
@@ -138,7 +141,7 @@ export function mountCalculator(main: HTMLElement, data: CalculatorData, deps: C
   }
 
   function renderResults(): void {
-    const result = calculate(items);
+    const result = calculate(items, mode);
     summary.textContent = `รายการทั้งหมด: ${result.totalEntries} · จำนวนกลุ่ม: ${result.groupCount}`;
     if (result.groups.length === 0) {
       resultBody.replaceChildren(el('p', 'muted', 'ยังไม่มีข้อมูล'));
@@ -177,12 +180,12 @@ export function mountCalculator(main: HTMLElement, data: CalculatorData, deps: C
   back.setAttribute('href', '#/');
 
   main.replaceChildren(
-    el('div', 'calc-toolbar', back, el('h2', 'calc-title', session.name), el('span', 'muted', 'บันทึกอัตโนมัติ')),
+    el('div', 'calc-toolbar', back, el('h2', 'calc-title', session.name), el('span', 'badge', modeLabel(mode)), el('span', 'muted', 'บันทึกอัตโนมัติ')),
     banner,
     el(
       'div',
       'calc-layout',
-      el('div', 'columns', ...columnEls),
+      el('div', mode === 4 ? 'columns columns-2' : 'columns', ...columnEls),
       el('aside', 'results', el('h3', '', 'ผลลัพธ์'), summary, resultBody),
     ),
   );
