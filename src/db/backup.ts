@@ -1,9 +1,10 @@
 // exportBackup, parseBackup (ตรวจรูปแบบก่อนแตะฐานข้อมูล), importBackup
+// โหมดของชุด: ไฟล์สำรองใส่ "mode": 4 เฉพาะชุด 4 ตัว ชุด 3 ตัวไม่มีฟิลด์ mode (ไฟล์เก่าจึงยังใช้ได้ และไฟล์ที่มีแต่ชุด 3 ตัวหน้าตาเหมือนเดิมทุกอย่าง)
 
 import { isValidMultiplier, isValidNumber } from '../domain/validators';
 import { systemClock, type ToteDatabase } from './db';
-import type { Clock } from './types';
-import { COLUMNS, DEFAULT_MODE } from '../domain/columns';
+import { sessionMode, type Clock } from './types';
+import { DEFAULT_MODE, getColumns, isValidMode, type Mode } from '../domain/columns';
 
 export const BACKUP_APP_ID = 'tote-calculator';
 export const BACKUP_SCHEMA_VERSION = 1;
@@ -19,6 +20,7 @@ export interface BackupSession {
   name: string;
   createdAt: string;
   updatedAt: string;
+  mode?: Mode; // มีเฉพาะชุด 4 ตัว (ไม่มี = 3 ตัว)
   entries: BackupEntry[];
 }
 
@@ -58,15 +60,18 @@ function fail(path: string, message: string): never {
   throw new BackupError(`${path}: ${message}`);
 }
 
-function validateEntry(raw: unknown, path: string): BackupEntry {
+function validateEntry(raw: unknown, path: string, mode: Mode): BackupEntry {
   if (!isRecord(raw)) fail(path, 'must be an object');
   const number = raw.number;
   const columnMultiplier = raw.columnMultiplier;
   const createdAt = raw.createdAt;
   const updatedAt = raw.updatedAt;
-  if (!isValidNumber(number)) fail(`${path}.number`, `invalid number ${JSON.stringify(number)}`);
-  if (typeof columnMultiplier !== 'number' || !isValidMultiplier(columnMultiplier)) {
-    fail(`${path}.columnMultiplier`, `invalid multiplier ${JSON.stringify(columnMultiplier)} (allowed: ${COLUMNS.join(', ')})`);
+  if (!isValidNumber(number, mode)) fail(`${path}.number`, `invalid number ${JSON.stringify(number)} (expected ${mode} digits)`);
+  if (typeof columnMultiplier !== 'number' || !isValidMultiplier(columnMultiplier, mode)) {
+    fail(
+      `${path}.columnMultiplier`,
+      `invalid multiplier ${JSON.stringify(columnMultiplier)} (allowed: ${getColumns(mode).join(', ')})`,
+    );
   }
   if (!isIso(createdAt)) fail(`${path}.createdAt`, 'must be an ISO timestamp');
   if (!isIso(updatedAt)) fail(`${path}.updatedAt`, 'must be an ISO timestamp');
@@ -82,9 +87,15 @@ function validateSession(raw: unknown, path: string): BackupSession {
   if (name === '') fail(`${path}.name`, 'must be a non-empty string');
   if (!isIso(createdAt)) fail(`${path}.createdAt`, 'must be an ISO timestamp');
   if (!isIso(updatedAt)) fail(`${path}.updatedAt`, 'must be an ISO timestamp');
+  // ไม่มี mode = ไฟล์เก่า = ชุด 3 ตัว; ถ้ามีต้องเป็น 3 หรือ 4 เท่านั้น
+  const rawMode = raw.mode;
+  if (rawMode !== undefined && !isValidMode(rawMode)) {
+    fail(`${path}.mode`, `invalid mode ${JSON.stringify(rawMode)} (allowed: 3, 4)`);
+  }
+  const mode: Mode = rawMode ?? DEFAULT_MODE;
   if (!Array.isArray(rawEntries)) fail(`${path}.entries`, 'must be an array');
-  const entries = rawEntries.map((entry, i) => validateEntry(entry, `${path}.entries[${i}]`));
-  return { name, createdAt, updatedAt, entries };
+  const entries = rawEntries.map((entry, i) => validateEntry(entry, `${path}.entries[${i}]`, mode));
+  return { name, createdAt, updatedAt, ...(mode === 4 ? { mode } : {}), entries };
 }
 
 // Checks the whole structure and returns a clean copy (unknown fields dropped).
@@ -149,6 +160,7 @@ export async function exportBackup(db: ToteDatabase, clock: Clock = systemClock)
         name: s.name,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
+        ...(sessionMode(s) === 4 ? { mode: 4 as const } : {}),
         entries: bySession.get(s.id) ?? [],
       })),
     };
@@ -177,7 +189,7 @@ export async function importBackup(
         name: s.name,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
-        mode: DEFAULT_MODE, // 10.4 จะอ่านโหมดจากไฟล์ backup
+        mode: s.mode ?? DEFAULT_MODE,
       });
       if (s.entries.length > 0) {
         await db.entries.bulkAdd(s.entries.map((e) => ({ sessionId, ...e })));
