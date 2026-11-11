@@ -4,7 +4,7 @@ export const manifest: Partial<ManifestOptions> = {
   id: 'tote-calculator',
   name: 'เครื่องคิดเลขโต๊ด',
   short_name: 'เลขโต๊ด',
-  description: 'คำนวณเลขโต๊ด 3 หลัก ใช้งานได้โดยไม่ต้องต่ออินเทอร์เน็ต',
+  description: 'คำนวณเลขโต๊ด 3 และ 4 หลัก ใช้งานได้โดยไม่ต้องต่ออินเทอร์เน็ต',
   lang: 'th',
   display: 'standalone',
   orientation: 'any',
