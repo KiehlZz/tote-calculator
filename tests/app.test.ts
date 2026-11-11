@@ -94,7 +94,7 @@ const resultRows = (root: ParentNode) =>
 const sessionRows = (root: ParentNode) => [...root.querySelectorAll('.session-row')];
 
 async function createSession(app: Launched, name: string): Promise<void> {
-  buttonByText(app.root, 'สร้างชุดข้อมูลใหม่').click();
+  buttonByText(app.root, 'สร้างชุด 3 ตัว').click();
   modalInput().value = name;
   buttonByText(document.body, 'สร้าง').click();
   await vi.waitFor(() => expect(window.location.hash).toMatch(/^#\/session\/\d+$/));

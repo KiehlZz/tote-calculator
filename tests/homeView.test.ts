@@ -67,7 +67,7 @@ const modalInput = () => document.body.querySelector('.modal input') as HTMLInpu
 const buttonByText = (root: ParentNode, text: string) =>
   [...root.querySelectorAll('button')].find((b) => b.textContent === text) as HTMLButtonElement;
 const buttonByLabel = (label: string) => main.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement;
-const openCreateDialog = () => buttonByText(main, 'สร้างชุดข้อมูลใหม่').click();
+const openCreateDialog = () => buttonByText(main, 'สร้างชุด 3 ตัว').click();
 
 describe('Home screen', () => {
   it('shows an empty state when there are no sessions', async () => {

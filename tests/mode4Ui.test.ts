@@ -106,9 +106,9 @@ describe('ui helpers by mode', () => {
 });
 
 describe('Home screen with 4-digit sessions', () => {
-  it('has a "สร้างชุด 4 ตัว" button next to the existing create button', async () => {
+  it('has "สร้างชุด 3 ตัว" and "สร้างชุด 4 ตัว" buttons', async () => {
     await mountHome();
-    expect(buttonByText(main, 'สร้างชุดข้อมูลใหม่')).toBeTruthy();
+    expect(buttonByText(main, 'สร้างชุด 3 ตัว')).toBeTruthy();
     expect(buttonByText(main, 'สร้างชุด 4 ตัว')).toBeTruthy();
   });
 
@@ -125,9 +125,9 @@ describe('Home screen with 4-digit sessions', () => {
     expect(navigate).toHaveBeenCalledWith(`#/session/${created.id}`);
   });
 
-  it('the existing button still creates a 3-digit session', async () => {
+  it('the "สร้างชุด 3 ตัว" button creates a 3-digit session', async () => {
     await mountHome();
-    buttonByText(main, 'สร้างชุดข้อมูลใหม่').click();
+    buttonByText(main, 'สร้างชุด 3 ตัว').click();
     modalInput().value = 'สามตัว';
     buttonByText(document.body, 'สร้าง').click();
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
